@@ -106,11 +106,12 @@ export class Player {
   }
 
   checkObstacleCollision(obstacle: Obstacle): boolean {
+    const margin = 2 // Небольшой отступ
     return (
-      this.x < obstacle.x + obstacle.width &&
-      this.x + this.width > obstacle.x &&
-      this.y < obstacle.y + obstacle.height &&
-      this.y + this.height > obstacle.y
+      this.x + margin < obstacle.x + obstacle.width &&
+      this.x + this.width - margin > obstacle.x &&
+      this.y + margin < obstacle.y + obstacle.height &&
+      this.y + this.height - margin > obstacle.y
     )
   }
 

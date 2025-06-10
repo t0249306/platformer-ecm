@@ -38,12 +38,14 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
 
     platformsRef.current = [
       new Platform(0, canvasHeight - 40, canvasWidth, 40),
+
       new Platform(200, canvasHeight - 120, 150, 20),
       new Platform(400, canvasHeight - 180, 150, 20),
       new Platform(600, canvasHeight - 240, 150, 20),
       new Platform(200, canvasHeight - 300, 150, 20),
       new Platform(50, canvasHeight - 380, 100, 20),
       new Platform(400, canvasHeight - 380, 350, 20),
+
       new Platform(50, canvasHeight - 210, 100, 20),
     ]
 
