@@ -1,15 +1,8 @@
-## Getting Started
+# Example
 
-First, run the development server:
+<div align="center">
+  <img src=".github/examples/example_1.png" width="75%">
+</div>
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔌 Testing
+Сайт протестирован и багов не выявлено.
