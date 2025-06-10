@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 
 export function useMobile() {
     const checkMobile = () => {
-        if (typeof window === "undefined") {
-            return false
-        }
-        return window.innerWidth < 768 || "ontouchstart" in window || navigator.maxTouchPoints > 0
+        const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera
+        const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+            userAgent.toLowerCase(),
+        )
+        const isSmallScreen = typeof window !== "undefined" && window.innerWidth <= 768
+        return isMobileDevice || isSmallScreen
     }
 
     const [isMobile, setIsMobile] = useState(checkMobile())
