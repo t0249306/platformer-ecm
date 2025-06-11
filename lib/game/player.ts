@@ -1,7 +1,7 @@
-import type { Platform } from "./platform"
-import type { Coin } from "./coin"
-import type { Obstacle } from "./obstacle"
-import type { Finish } from "./finish"
+import type { Platform } from "@/components/level/platform"
+import type { Coin } from "@/components/level/coin"
+import type { Obstacle } from "@/components/level/obstacle"
+import type { Finish } from "@/components/level/finish"
 
 export class Player {
   x: number
@@ -49,46 +49,80 @@ export class Player {
     this.velocityY += this.gravity
   }
 
-  update(canvasWidth: number) {
+  update(levelWidth: number) {
     this.velocityX *= this.friction
     this.x += this.velocityX
     this.y += this.velocityY
 
     if (this.x < 0) {
       this.x = 0
-    } else if (this.x + this.width > canvasWidth) {
-      this.x = canvasWidth - this.width
+    } else if (this.x + this.width > levelWidth) {
+      this.x = levelWidth - this.width
     }
   }
 
   checkPlatformCollision(platform: Platform): boolean {
     const overlap =
-      this.x < platform.x + platform.width &&
-      this.x + this.width > platform.x &&
-      this.y < platform.y + platform.height &&
-      this.y + this.height > platform.y
+      this.x < platform.getX() + platform.width &&
+      this.x + this.width > platform.getX() &&
+      this.y < platform.getY() + platform.height &&
+      this.y + this.height > platform.getY()
 
     if (overlap) {
-      const overlapLeft = this.x + this.width - platform.x
-      const overlapRight = platform.x + platform.width - this.x
-      const overlapTop = this.y + this.height - platform.y
-      const overlapBottom = platform.y + platform.height - this.y
+      const overlapLeft = this.x + this.width - platform.getX()
+      const overlapRight = platform.getX() + platform.width - this.x
+      const overlapTop = this.y + this.height - platform.getY()
+      const overlapBottom = platform.getY() + platform.height - this.y
 
       const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom)
 
       if (minOverlap === overlapTop && this.velocityY >= 0) {
-        this.y = platform.y - this.height
+        this.y = platform.getY() - this.height
         this.velocityY = 0
         return true
       } else if (minOverlap === overlapBottom && this.velocityY < 0) {
-        this.y = platform.y + platform.height
+        this.y = platform.getY() + platform.height
         this.velocityY = 0
       } else if (minOverlap === overlapLeft && this.velocityX > 0) {
-        this.x = platform.x - this.width
+        this.x = platform.getX() - this.width
         this.velocityX = 0
       } else if (minOverlap === overlapRight && this.velocityX < 0) {
-        this.x = platform.x + platform.width
+        this.x = platform.getX() + platform.width
         this.velocityX = 0
+      }
+    }
+
+    return false
+  }
+
+  checkHeadCollision(platforms: Platform[], obstacles: Obstacle[]): boolean {
+    const jumpHeight = this.jumpStrength * 8
+    const headCheckArea = {
+      x: this.x + 5,
+      y: this.y - jumpHeight,
+      width: this.width - 10,
+      height: jumpHeight + 5,
+    }
+
+    for (const platform of platforms) {
+      if (
+        headCheckArea.x < platform.getX() + platform.width &&
+        headCheckArea.x + headCheckArea.width > platform.getX() &&
+        headCheckArea.y < platform.getY() + platform.height &&
+        headCheckArea.y + headCheckArea.height > platform.getY()
+      ) {
+        return true
+      }
+    }
+
+    for (const obstacle of obstacles) {
+      if (
+        headCheckArea.x < obstacle.getX() + obstacle.width &&
+        headCheckArea.x + headCheckArea.width > obstacle.getX() &&
+        headCheckArea.y < obstacle.getY() + obstacle.height &&
+        headCheckArea.y + headCheckArea.height > obstacle.getY()
+      ) {
+        return true
       }
     }
 
@@ -98,48 +132,48 @@ export class Player {
   checkCoinCollision(coin: Coin): boolean {
     const margin = 5
     return (
-      this.x + margin < coin.x + coin.radius * 2 &&
-      this.x + this.width - margin > coin.x &&
-      this.y + margin < coin.y + coin.radius * 2 &&
-      this.y + this.height - margin > coin.y
+      this.x + margin < coin.getX() + coin.radius * 2 &&
+      this.x + this.width - margin > coin.getX() &&
+      this.y + margin < coin.getY() + coin.radius * 2 &&
+      this.y + this.height - margin > coin.getY()
     )
   }
 
   checkObstacleCollision(obstacle: Obstacle): boolean {
-    const margin = 2 // Небольшой отступ
+    const margin = 2
     return (
-      this.x + margin < obstacle.x + obstacle.width &&
-      this.x + this.width - margin > obstacle.x &&
-      this.y + margin < obstacle.y + obstacle.height &&
-      this.y + this.height - margin > obstacle.y
+      this.x + margin < obstacle.getX() + obstacle.width &&
+      this.x + this.width - margin > obstacle.getX() &&
+      this.y + margin < obstacle.getY() + obstacle.height &&
+      this.y + this.height - margin > obstacle.getY()
     )
   }
 
   checkFinishCollision(finish: Finish): boolean {
     return (
-      this.x + 10 < finish.x + finish.width &&
-      this.x + this.width - 10 > finish.x &&
-      this.y + 10 < finish.y + finish.height &&
-      this.y + this.height - 10 > finish.y
+      this.x + 10 < finish.getX() + finish.width &&
+      this.x + this.width - 10 > finish.getX() &&
+      this.y + 10 < finish.getY() + finish.height &&
+      this.y + this.height - 10 > finish.getY()
     )
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  drawAt(ctx: CanvasRenderingContext2D, screenX: number, screenY: number) {
     ctx.fillStyle = "#3b82f6"
-    ctx.fillRect(this.x, this.y, this.width, this.height)
+    ctx.fillRect(screenX, screenY, this.width, this.height)
 
     ctx.fillStyle = "#ffffff"
     ctx.beginPath()
-    ctx.arc(this.x + this.width * 0.3, this.y + this.height * 0.3, 5, 0, Math.PI * 2)
+    ctx.arc(screenX + this.width * 0.3, screenY + this.height * 0.3, 5, 0, Math.PI * 2)
     ctx.fill()
     ctx.beginPath()
-    ctx.arc(this.x + this.width * 0.7, this.y + this.height * 0.3, 5, 0, Math.PI * 2)
+    ctx.arc(screenX + this.width * 0.7, screenY + this.height * 0.3, 5, 0, Math.PI * 2)
     ctx.fill()
 
     ctx.strokeStyle = "#ffffff"
     ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.6, 10, 0, Math.PI)
+    ctx.arc(screenX + this.width * 0.5, screenY + this.height * 0.6, 10, 0, Math.PI)
     ctx.stroke()
   }
 }

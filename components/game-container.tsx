@@ -5,11 +5,23 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useGame } from "@/hooks/use-game"
 import { useMobile } from "@/hooks/use-mobile"
-import MobileControls from "./mobile-controls"
+import { levelRegistry } from "@/lib/game/level-registry"
+import { SettingsStorage, type GameSettings } from "@/lib/settings-storage"
+import { soundManager } from "@/lib/sound-manager"
+import MobileControls from "@/components/mobile-controls"
+import GameMenu from "@/components/game-menu"
+import LevelSelector from "@/components/level-selector"
+import ComingSoon from "@/components/coming-soon"
+import Settings from "@/components/settings"
+import FullscreenNotification from "@/components/fullscreen-notification"
+
+type GameState = "welcome" | "settings" | "menu" | "level-select" | "coming-soon" | "playing"
 
 export default function GameContainer() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [gameStarted, setGameStarted] = useState(false)
+  const [gameState, setGameState] = useState<GameState>("welcome")
+  const [previousState, setPreviousState] = useState<GameState>("welcome")
+  const [currentLevelId, setCurrentLevelId] = useState<string>("")
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
   const [gameWon, setGameWon] = useState(false)
@@ -21,10 +33,12 @@ export default function GameContainer() {
   const timeUpdateFrameRef = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
 
-  const isMobile = useMobile()
+  const isMobile = useRef(useMobile()).current
 
-  const [controlMode, setControlMode] = useState<"two-handed" | "one-handed">("two-handed")
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [settings, setSettings] = useState<GameSettings>(() => SettingsStorage.load())
+  const [isFullscreen, setIsFullscreen] = useState(settings.fullscreenEnabled)
+  const [showFullscreenNotification, setShowFullscreenNotification] = useState(false)
+  const [hasInteracted, setHasInteracted] = useState(false)
 
   const { initGame, resetGame, handleMobileControl, resetKeys } = useRef(
     useGame({
@@ -46,6 +60,25 @@ export default function GameContainer() {
       },
     }),
   ).current
+
+  const currentLevel = levelRegistry.get(currentLevelId)
+
+  useEffect(() => {
+    soundManager.setMuted(!settings.soundEnabled)
+    soundManager.setVolume(settings.soundVolume)
+  }, [settings.soundEnabled, settings.soundVolume])
+
+  useEffect(() => {
+    if (settings.fullscreenEnabled && !hasInteracted) {
+      setShowFullscreenNotification(true)
+    }
+  }, [settings.fullscreenEnabled, hasInteracted])
+
+  const updateSettings = (newSettings: Partial<GameSettings>) => {
+    const updatedSettings = { ...settings, ...newSettings }
+    setSettings(updatedSettings)
+    SettingsStorage.save(updatedSettings)
+  }
 
   const formatTime = (milliseconds: number) => {
     const totalMs = Math.floor(milliseconds)
@@ -103,9 +136,11 @@ export default function GameContainer() {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen()
         setIsFullscreen(true)
+        updateSettings({ fullscreenEnabled: true })
       } else {
         await document.exitFullscreen()
         setIsFullscreen(false)
+        updateSettings({ fullscreenEnabled: false })
       }
     } catch (error) {
       console.error("Fullscreen error:", error)
@@ -114,7 +149,9 @@ export default function GameContainer() {
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
+      const isCurrentlyFullscreen = !!document.fullscreenElement
+      setIsFullscreen(isCurrentlyFullscreen)
+      updateSettings({ fullscreenEnabled: isCurrentlyFullscreen })
     }
 
     document.addEventListener("fullscreenchange", handleFullscreenChange)
@@ -122,12 +159,37 @@ export default function GameContainer() {
   }, [])
 
   useEffect(() => {
-    if (gameStarted) {
-      // Блокируем скролл страницы
+    const handleFirstInteraction = () => {
+      setHasInteracted(true)
+      setShowFullscreenNotification(false)
+
+      if (settings.fullscreenEnabled && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {
+          updateSettings({ fullscreenEnabled: false })
+          setIsFullscreen(false)
+        })
+      }
+
+      document.removeEventListener("click", handleFirstInteraction)
+      document.removeEventListener("keydown", handleFirstInteraction)
+    }
+
+    document.addEventListener("click", handleFirstInteraction)
+    document.addEventListener("keydown", handleFirstInteraction)
+
+    return () => {
+      document.removeEventListener("click", handleFirstInteraction)
+      document.removeEventListener("keydown", handleFirstInteraction)
+    }
+  }, [settings.fullscreenEnabled])
+
+  useEffect(() => {
+    if (gameState === "playing") {
       document.body.style.overflow = "hidden"
       document.documentElement.style.overflow = "hidden"
+      document.body.style.userSelect = "none"
+      document.documentElement.style.userSelect = "none"
 
-      // Предотвращаем touch события для скролла
       const preventScroll = (e: TouchEvent) => {
         e.preventDefault()
       }
@@ -140,24 +202,25 @@ export default function GameContainer() {
       document.addEventListener("wheel", preventWheel, { passive: false })
 
       return () => {
-        // Восстанавливаем скролл при размонтировании
         document.body.style.overflow = ""
         document.documentElement.style.overflow = ""
+        document.body.style.userSelect = ""
+        document.documentElement.style.userSelect = ""
         document.removeEventListener("touchmove", preventScroll)
         document.removeEventListener("wheel", preventWheel)
       }
     }
-  }, [gameStarted])
+  }, [gameState])
 
   useEffect(() => {
-    if (gameStarted && canvasRef.current) {
-      initGame()
+    if (gameState === "playing" && canvasRef.current) {
+      initGame(currentLevelId)
       startTimer()
     }
-  }, [gameStarted, initGame])
+  }, [gameState, initGame, currentLevelId])
 
   useEffect(() => {
-    if (gameStarted && !gameOver && !gameWon) {
+    if (gameState === "playing" && !gameOver && !gameWon) {
       timeUpdateFrameRef.current = requestAnimationFrame(updateTime)
     }
 
@@ -166,26 +229,37 @@ export default function GameContainer() {
         cancelAnimationFrame(timeUpdateFrameRef.current)
       }
     }
-  }, [gameStarted, gameOver, gameWon, updateTime])
+  }, [gameState, gameOver, gameWon, updateTime])
 
   useEffect(() => {
     return () => {
       if (timeUpdateFrameRef.current) {
         cancelAnimationFrame(timeUpdateFrameRef.current)
       }
-    }
-  }, [])
-
-  useEffect(() => {
-    return () => {
-      // Очистка при размонтировании компонента
       document.body.style.overflow = ""
       document.documentElement.style.overflow = ""
+      document.body.style.userSelect = ""
+      document.documentElement.style.userSelect = ""
     }
   }, [])
 
+  const navigateToState = (newState: GameState) => {
+    setPreviousState(gameState)
+    setGameState(newState)
+  }
+
   const handleStartGame = () => {
-    setGameStarted(true)
+    navigateToState("menu")
+  }
+
+  const handleSettings = () => {
+    navigateToState("settings")
+  }
+
+  const handleLevelSelect = (levelId: string) => {
+    setCurrentLevelId(levelId)
+    setPreviousState("level-select")
+    setGameState("playing")
     setGameOver(false)
     setGameWon(false)
     setScore(0)
@@ -198,7 +272,7 @@ export default function GameContainer() {
       cancelAnimationFrame(timeUpdateFrameRef.current)
     }
 
-    resetGame()
+    resetGame(currentLevelId)
     setGameOver(false)
     setGameWon(false)
     setScore(0)
@@ -210,88 +284,197 @@ export default function GameContainer() {
     }, 150)
   }
 
+  const handleBackToPrevious = () => {
+    if (timeUpdateFrameRef.current) {
+      cancelAnimationFrame(timeUpdateFrameRef.current)
+    }
+
+    resetGame(currentLevelId)
+    setGameState(previousState)
+    setGameOver(false)
+    setGameWon(false)
+    setScore(0)
+    setCurrentTime(0)
+    setFinalTime(0)
+  }
+
   const handleControlModeChange = () => {
-    setControlMode(controlMode === "two-handed" ? "one-handed" : "two-handed")
+    const newMode = settings.controlMode === "two-handed" ? "one-handed" : "two-handed"
+    updateSettings({ controlMode: newMode })
+  }
+
+  const handleSoundEnabledChange = (enabled: boolean) => {
+    updateSettings({ soundEnabled: enabled })
+  }
+
+  const handleSoundVolumeChange = (volume: number) => {
+    updateSettings({ soundVolume: volume })
+  }
+
+  const handleDismissFullscreenNotification = () => {
+    setShowFullscreenNotification(false)
+  }
+
+  const getDifficultyStars = (difficulty: 1 | 2 | 3) => {
+    return "⭐".repeat(difficulty)
+  }
+
+  if (gameState === "welcome") {
+    return (
+      <>
+        <div className="w-full max-w-3xl mx-auto">
+          <Card className="w-full">
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center justify-center p-10 space-y-6">
+                <h2 className="text-2xl font-bold">Добро пожаловать в Платформер!</h2>
+                <p className="text-center text-muted-foreground">
+                  Используйте A/D для движения и пробел/W для прыжка. Соберите все монеты и доберитесь до финиша как
+                  можно быстрее!
+                </p>
+                <div className="flex flex-col gap-3 w-full max-w-xs">
+                  <Button size="lg" onClick={handleStartGame} className="w-full">
+                    🎮 Играть
+                  </Button>
+                  <Button size="lg" variant="outline" onClick={handleSettings} className="w-full">
+                    ⚙️ Настройки
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <FullscreenNotification show={showFullscreenNotification} onDismiss={handleDismissFullscreenNotification} />
+      </>
+    )
+  }
+
+  if (gameState === "settings") {
+    return (
+      <div className="w-full max-w-3xl mx-auto">
+        <Settings
+          controlMode={settings.controlMode}
+          isFullscreen={isFullscreen}
+          soundEnabled={settings.soundEnabled}
+          soundVolume={settings.soundVolume}
+          onControlModeChange={handleControlModeChange}
+          onToggleFullscreen={toggleFullscreen}
+          onSoundEnabledChange={handleSoundEnabledChange}
+          onSoundVolumeChange={handleSoundVolumeChange}
+          onBack={() => setGameState("welcome")}
+        />
+      </div>
+    )
+  }
+
+  if (gameState === "menu") {
+    return (
+      <div className="w-full max-w-3xl mx-auto">
+        <GameMenu
+          onLevelSelect={() => navigateToState("level-select")}
+          onComingSoon={() => navigateToState("coming-soon")}
+          onBack={() => setGameState("welcome")}
+        />
+      </div>
+    )
+  }
+
+  if (gameState === "level-select") {
+    return (
+      <div className="w-full max-w-3xl mx-auto">
+        <LevelSelector onLevelSelect={handleLevelSelect} onBack={() => setGameState("menu")} />
+      </div>
+    )
+  }
+
+  if (gameState === "coming-soon") {
+    return (
+      <div className="w-full max-w-3xl mx-auto">
+        <ComingSoon onBack={() => setGameState("menu")} />
+      </div>
+    )
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      {/* Основная карточка игры */}
+    <div className="w-full max-w-3xl mx-auto select-none">
       <Card className="w-full">
         <CardContent className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-6">
-              <div className="text-xl font-bold">Счёт: {score}</div>
-              {gameStarted && !gameOver && !gameWon && (
-                <div className="text-xl font-bold text-blue-600 font-mono">Время: {formatTime(currentTime)}</div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {gameStarted && !gameOver && !gameWon && (
-                <Button variant="outline" onClick={handleRestartGame}>
-                  Начать заново
+          {!gameOver && !gameWon && (
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex gap-6 items-center">
+                <div className="text-xl font-bold">Счёт: {score}</div>
+                {currentLevel && !isMobile && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Сложность:</span>
+                    <span className="text-lg">{getDifficultyStars(currentLevel.difficulty)}</span>
+                  </div>
+                )}
+                {gameState === "playing" && !gameOver && !gameWon && (
+                  <div className="text-xl font-bold text-blue-600 font-mono">Время: {formatTime(currentTime)}</div>
+                )}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={handleBackToPrevious} className="w-full sm:w-auto">
+                  ← Назад
                 </Button>
-              )}
-              {!isMobile && (
-                <Button variant="outline" onClick={toggleFullscreen}>
-                  {isFullscreen ? "🔲 Выход" : "⛶ Полный экран"}
-                </Button>
-              )}
+                {gameState === "playing" && !gameOver && !gameWon && (
+                  <Button variant="outline" onClick={handleRestartGame} className="w-full sm:w-auto">
+                    Начать заново
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {!gameStarted ? (
-            <div className="flex flex-col items-center justify-center p-10 space-y-6">
-              <h2 className="text-2xl font-bold">Добро пожаловать в Платформер!</h2>
-              <p className="text-center text-muted-foreground">
-                Используйте стрелки влево/вправо или клавиши A/D для движения и пробел или стрелку вверх/W для прыжка.
-                Соберите все монеты и доберитесь до финиша как можно быстрее!
-              </p>
-              <Button size="lg" onClick={handleStartGame}>
-                Начать игру
-              </Button>
-            </div>
-          ) : (
-            <div className="relative">
-              <canvas
-                ref={canvasRef}
-                width={800}
-                height={500}
-                className="border border-slate-600 rounded-md bg-slate-800 w-full h-auto"
-              />
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={isMobile && (gameWon || gameOver) ? 650 : currentLevel?.height || 500}
+              className="border border-slate-600 rounded-md bg-slate-800 w-full h-auto select-none"
+            />
 
-              {gameOver && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-md z-30">
-                  <h2 className="text-3xl font-bold text-red-500 mb-4">Игра окончена!</h2>
-                  <div className="text-white mb-2">Ваш счёт: {score}</div>
-                  <div className="text-white mb-4 font-mono text-lg">Время: {formatTime(finalTime)}</div>
+            {gameOver && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-md z-30">
+                <h2 className="text-3xl font-bold text-red-500 mb-4">Игра окончена!</h2>
+                <div className="text-white mb-2">Ваш счёт: {score}</div>
+                <div className="text-white mb-4 font-mono text-lg">Время: {formatTime(finalTime)}</div>
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button size="lg" onClick={handleRestartGame}>
                     Попробовать снова
                   </Button>
+                  <Button size="lg" variant="outline" onClick={handleBackToPrevious}>
+                    Назад
+                  </Button>
                 </div>
-              )}
+              </div>
+            )}
 
-              {gameWon && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-md z-30">
-                  <h2 className="text-3xl font-bold text-green-500 mb-4">Победа!</h2>
-                  <div className="text-white mb-2">Ваш счёт: {score}</div>
-                  <div className="text-white mb-2 font-mono text-lg">Время прохождения: {formatTime(finalTime)}</div>
-                  <div className="text-yellow-400 mb-4 text-sm">
-                    {finalTime < 15000
-                      ? "🏆 Невероятно быстро!"
-                      : finalTime < 30000
-                        ? "⭐ Отличное время!"
-                        : finalTime < 60000
-                          ? "👍 Хорошее время!"
-                          : "🎯 Неплохо!"}
-                  </div>
+            {gameWon && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-md z-30">
+                <h2 className="text-3xl font-bold text-green-500 mb-4">Победа!</h2>
+                <div className="text-white mb-2">Ваш счёт: {score}</div>
+                <div className="text-white mb-2 font-mono text-lg">Время прохождения: {formatTime(finalTime)}</div>
+                <div className="text-yellow-400 mb-4 text-sm">
+                  {finalTime < 15000
+                    ? "🏆 Невероятно быстро!"
+                    : finalTime < 30000
+                      ? "⭐ Отличное время!"
+                      : finalTime < 60000
+                        ? "👍 Хорошее время!"
+                        : "🎯 Неплохо!"}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button size="lg" onClick={handleRestartGame}>
                     Играть снова
                   </Button>
+                  <Button size="lg" variant="outline" onClick={handleBackToPrevious}>
+                    Назад
+                  </Button>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
           <div className="mt-4 text-sm text-muted-foreground">
             <p>Управление:</p>
@@ -303,15 +486,8 @@ export default function GameContainer() {
         </CardContent>
       </Card>
 
-      {/* Мобильные элементы управления */}
-      {isMobile && gameStarted && !gameOver && !gameWon && (
-        <MobileControls
-          controlMode={controlMode}
-          isFullscreen={isFullscreen}
-          onMobileControl={handleMobileControl}
-          onControlModeChange={handleControlModeChange}
-          onToggleFullscreen={toggleFullscreen}
-        />
+      {isMobile && gameState === "playing" && !gameOver && !gameWon && (
+        <MobileControls controlMode={settings.controlMode} onMobileControl={handleMobileControl} />
       )}
     </div>
   )
