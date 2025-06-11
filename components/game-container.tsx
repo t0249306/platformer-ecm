@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ActiveGameStatistics, useGame } from "@/hooks/use-game"
+import { type ActiveGameStatistics, useGame } from "@/hooks/use-game"
 import { useMobile } from "@/hooks/use-mobile"
 import { levelRegistry } from "@/lib/game/level-registry"
 import { SettingsStorage, type GameSettings } from "@/lib/settings-storage"
 import { StatisticsStorage } from "@/lib/statistics-storage"
 import { soundManager } from "@/lib/sound-manager"
+import { ArrowLeft, RotateCcw } from "lucide-react"
 import MobileControls from "@/components/mobile-controls"
 import GameMenu from "@/components/game-menu"
 import LevelSelector from "@/components/level-selector"
@@ -59,13 +60,7 @@ export default function GameContainer() {
         stopTimer()
         setGameOver(true)
 
-        StatisticsStorage.updateLevelStatistics(
-          stats.levelId,
-          null,
-          stats.coinsCollected,
-          stats.totalCoins,
-          false,
-        )
+        StatisticsStorage.updateLevelStatistics(stats.levelId, null, stats.coinsCollected, stats.totalCoins, false)
       },
       onGameWon: (stats: ActiveGameStatistics) => {
         if (isMobile) {
@@ -464,13 +459,25 @@ export default function GameContainer() {
                   <div className="text-xl font-bold text-blue-600 font-mono">Время: {formatTime(currentTime)}</div>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button variant="outline" onClick={handleBackToPrevious} className="w-full sm:w-auto">
-                  ← Назад
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBackToPrevious}
+                  className="h-8 w-8 p-0"
+                  title="Назад"
+                >
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
                 {gameState === "playing" && !gameOver && !gameWon && (
-                  <Button variant="outline" onClick={handleRestartGame} className="w-full sm:w-auto">
-                    Начать заново
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRestartGame}
+                    className="h-8 w-8 p-0"
+                    title="Начать заново"
+                  >
+                    <RotateCcw className="h-4 w-4" />
                   </Button>
                 )}
               </div>
