@@ -9,11 +9,21 @@ import { Camera } from "@/lib/game/camera"
 import { levelRegistry } from "@/lib/game/level-registry"
 import { soundManager } from "@/lib/sound-manager"
 
+export interface ActiveGameStatistics {
+  levelId: string,
+  level: Level,
+  score: number,
+  coinsCollected: number,
+  totalCoins: number,
+  startTime: Date,
+  endTime?: Date,
+}
+
 interface GameProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
-  onScoreUpdate: (score: number) => void
-  onGameOver: () => void
-  onGameWon: () => void
+  onScoreUpdate: (score: number, coinsCollected: number) => void
+  onGameOver: (stats: ActiveGameStatistics) => void
+  onGameWon: (stats: ActiveGameStatistics) => void
 }
 
 export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: GameProps) {
@@ -24,9 +34,13 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
   const keysRef = useRef<{ [key: string]: boolean }>({})
   const gameActiveRef = useRef<boolean>(false)
   const scoreRef = useRef<number>(0)
+  const coinsCollectedRef = useRef<number>(0)
   const totalCoinsRef = useRef<number>(0)
   const gameInitializedRef = useRef<boolean>(false)
   const lastTimeRef = useRef<number>(0)
+
+  const startGameTimeRef = useRef<Date | null>(null)
+  const endGameTimeRef = useRef<Date | null>(null)
 
   const createLevel = useCallback((ctx: CanvasRenderingContext2D, levelId: string) => {
     const levelData = levelRegistry.get(levelId)
@@ -45,6 +59,7 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
     playerRef.current = new Player(levelData.playerStart.x, levelData.playerStart.y, 40, 60)
 
     totalCoinsRef.current = levelRef.current.getTotalCoins()
+    coinsCollectedRef.current = 0
   }, [])
 
   const update = useCallback(
@@ -96,16 +111,34 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
 
       if (player.y > level.height) {
         gameActiveRef.current = false
+        endGameTimeRef.current = new Date()
         soundManager.play("death")
-        onGameOver()
+        onGameOver({
+          levelId: level.id,
+          level: level,
+          score: scoreRef.current,
+          coinsCollected: coinsCollectedRef.current,
+          totalCoins: totalCoinsRef.current,
+          startTime: startGameTimeRef.current!,
+          endTime: endGameTimeRef.current,
+        })
         return
       }
 
       for (const obstacle of level.obstacles) {
         if (player.checkObstacleCollision(obstacle)) {
           gameActiveRef.current = false
+          endGameTimeRef.current = new Date()
           soundManager.play("death")
-          onGameOver()
+          onGameOver({
+            levelId: level.id,
+            level: level,
+            score: scoreRef.current,
+            coinsCollected: coinsCollectedRef.current,
+            totalCoins: totalCoinsRef.current,
+            startTime: startGameTimeRef.current!,
+            endTime: endGameTimeRef.current,
+          })
           return
         }
       }
@@ -116,6 +149,7 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
           coinCollected = true
           level.removeCoin(i)
           scoreRef.current += 10
+          coinsCollectedRef.current += 1
           soundManager.play("coin")
           break
         }
@@ -126,8 +160,17 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
           scoreRef.current += 50
         }
         gameActiveRef.current = false
+        endGameTimeRef.current = new Date()
         soundManager.play("win")
-        onGameWon()
+        onGameWon({
+          levelId: level.id,
+          level: level,
+          score: scoreRef.current,
+          coinsCollected: coinsCollectedRef.current,
+          totalCoins: totalCoinsRef.current,
+          startTime: startGameTimeRef.current!,
+          endTime: endGameTimeRef.current,
+        })
         return
       }
 
@@ -139,7 +182,7 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
       player.drawAt(ctx, playerScreenPos.x, playerScreenPos.y)
 
       if (coinCollected) {
-        onScoreUpdate(scoreRef.current)
+        onScoreUpdate(scoreRef.current, coinsCollectedRef.current)
       }
 
       if (gameActiveRef.current) {
@@ -162,11 +205,14 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
 
       if (!gameInitializedRef.current) {
         scoreRef.current = 0
+        coinsCollectedRef.current = 0
         gameInitializedRef.current = true
       }
 
       gameActiveRef.current = false
       createLevel(ctx, currentLevelId)
+      startGameTimeRef.current = new Date()
+      endGameTimeRef.current = null
       gameActiveRef.current = true
       lastTimeRef.current = performance.now()
       animationFrameRef.current = requestAnimationFrame(update)
@@ -208,7 +254,10 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
         cancelAnimationFrame(animationFrameRef.current)
       }
       gameActiveRef.current = false
+      startGameTimeRef.current = new Date()
+      endGameTimeRef.current = null
       scoreRef.current = 0
+      coinsCollectedRef.current = 0
       gameInitializedRef.current = false
 
       setTimeout(() => {

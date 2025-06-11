@@ -3,31 +3,36 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { useGame } from "@/hooks/use-game"
+import { ActiveGameStatistics, useGame } from "@/hooks/use-game"
 import { useMobile } from "@/hooks/use-mobile"
 import { levelRegistry } from "@/lib/game/level-registry"
 import { SettingsStorage, type GameSettings } from "@/lib/settings-storage"
+import { StatisticsStorage } from "@/lib/statistics-storage"
 import { soundManager } from "@/lib/sound-manager"
 import MobileControls from "@/components/mobile-controls"
 import GameMenu from "@/components/game-menu"
 import LevelSelector from "@/components/level-selector"
+import LevelStatisticsComponent from "@/components/level-statistics"
 import ComingSoon from "@/components/coming-soon"
 import Settings from "@/components/settings"
 import FullscreenNotification from "@/components/fullscreen-notification"
 
-type GameState = "welcome" | "settings" | "menu" | "level-select" | "coming-soon" | "playing"
+type GameState = "welcome" | "settings" | "menu" | "level-select" | "level-statistics" | "coming-soon" | "playing"
 
 export default function GameContainer() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gameState, setGameState] = useState<GameState>("welcome")
   const [previousState, setPreviousState] = useState<GameState>("welcome")
   const [currentLevelId, setCurrentLevelId] = useState<string>("")
-  const [score, setScore] = useState(0)
+  const [selectedLevelForStats, setSelectedLevelForStats] = useState<string>("")
   const [gameOver, setGameOver] = useState(false)
   const [gameWon, setGameWon] = useState(false)
 
+  const [score, setScore] = useState(0)
+  const [coinsCollected, setCoinsCollected] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [finalTime, setFinalTime] = useState(0)
+
   const gameStartDateRef = useRef<Date | null>(null)
   const gameEndDateRef = useRef<Date | null>(null)
   const timeUpdateFrameRef = useRef<number>(0)
@@ -43,25 +48,47 @@ export default function GameContainer() {
   const { initGame, resetGame, handleMobileControl, resetKeys } = useRef(
     useGame({
       canvasRef,
-      onScoreUpdate: (newScore: number) => setScore(newScore),
-      onGameOver: () => {
+      onScoreUpdate: (newScore: number, newCoinsCollected: number) => {
+        setScore(newScore)
+        setCoinsCollected(newCoinsCollected)
+      },
+      onGameOver: (stats: ActiveGameStatistics) => {
         if (isMobile) {
           resetKeys()
         }
         stopTimer()
         setGameOver(true)
+
+        StatisticsStorage.updateLevelStatistics(
+          stats.levelId,
+          null,
+          stats.coinsCollected,
+          stats.totalCoins,
+          false,
+        )
       },
-      onGameWon: () => {
+      onGameWon: (stats: ActiveGameStatistics) => {
         if (isMobile) {
           resetKeys()
         }
         stopTimer()
         setGameWon(true)
+
+        const currentLevel = stats.level
+        if (currentLevel) {
+          StatisticsStorage.updateLevelStatistics(
+            stats.levelId,
+            stats.endTime!.getTime() - stats.startTime.getTime(),
+            stats.coinsCollected,
+            stats.totalCoins,
+            true,
+          )
+        }
       },
     }),
   ).current
 
-  const currentLevel = levelRegistry.get(currentLevelId)
+  const getCurrentLevel = () => levelRegistry.get(currentLevelId)
 
   useEffect(() => {
     soundManager.setMuted(!settings.soundEnabled)
@@ -263,8 +290,14 @@ export default function GameContainer() {
     setGameOver(false)
     setGameWon(false)
     setScore(0)
+    setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
+  }
+
+  const handleLevelStatistics = (levelId: string) => {
+    setSelectedLevelForStats(levelId)
+    navigateToState("level-statistics")
   }
 
   const handleRestartGame = () => {
@@ -276,6 +309,7 @@ export default function GameContainer() {
     setGameOver(false)
     setGameWon(false)
     setScore(0)
+    setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
 
@@ -294,6 +328,7 @@ export default function GameContainer() {
     setGameOver(false)
     setGameWon(false)
     setScore(0)
+    setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
   }
@@ -382,7 +417,19 @@ export default function GameContainer() {
   if (gameState === "level-select") {
     return (
       <div className="w-full max-w-3xl mx-auto">
-        <LevelSelector onLevelSelect={handleLevelSelect} onBack={() => setGameState("menu")} />
+        <LevelSelector
+          onLevelSelect={handleLevelSelect}
+          onLevelStatistics={handleLevelStatistics}
+          onBack={() => setGameState("menu")}
+        />
+      </div>
+    )
+  }
+
+  if (gameState === "level-statistics") {
+    return (
+      <div className="w-full max-w-3xl mx-auto">
+        <LevelStatisticsComponent levelId={selectedLevelForStats} onBack={() => setGameState("level-select")} />
       </div>
     )
   }
@@ -395,6 +442,8 @@ export default function GameContainer() {
     )
   }
 
+  const currentLevel = getCurrentLevel()
+
   return (
     <div className="w-full max-w-3xl mx-auto select-none">
       <Card className="w-full">
@@ -402,7 +451,9 @@ export default function GameContainer() {
           {!gameOver && !gameWon && (
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-6 items-center">
-                <div className="text-xl font-bold">Счёт: {score}</div>
+                <div className="text-xl font-bold text-yellow-600">
+                  Монеты: {coinsCollected}/{currentLevel?.coins.length || 0}
+                </div>
                 {currentLevel && !isMobile && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">Сложность:</span>
@@ -438,6 +489,9 @@ export default function GameContainer() {
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-md z-30">
                 <h2 className="text-3xl font-bold text-red-500 mb-4">Игра окончена!</h2>
                 <div className="text-white mb-2">Ваш счёт: {score}</div>
+                <div className="text-white mb-2">
+                  Собрано монет: {coinsCollected}/{currentLevel?.coins.length || 0}
+                </div>
                 <div className="text-white mb-4 font-mono text-lg">Время: {formatTime(finalTime)}</div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Button size="lg" onClick={handleRestartGame}>
@@ -454,6 +508,9 @@ export default function GameContainer() {
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-md z-30">
                 <h2 className="text-3xl font-bold text-green-500 mb-4">Победа!</h2>
                 <div className="text-white mb-2">Ваш счёт: {score}</div>
+                <div className="text-white mb-2">
+                  Собрано монет: {coinsCollected}/{currentLevel?.coins.length || 0}
+                </div>
                 <div className="text-white mb-2 font-mono text-lg">Время прохождения: {formatTime(finalTime)}</div>
                 <div className="text-yellow-400 mb-4 text-sm">
                   {finalTime < 15000
