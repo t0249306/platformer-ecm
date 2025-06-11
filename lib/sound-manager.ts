@@ -10,10 +10,10 @@ class SoundManager {
   }
 
   private loadSounds() {
-    this.registerSound("coin", "/sounds/coin.mp3")
-    this.registerSound("jump", "/sounds/jump.wav")
-    this.registerSound("death", "/sounds/death.mp3")
-    this.registerSound("win", "/sounds/win.wav")
+    this.registerSound("coin", "./sounds/coin.mp3")
+    this.registerSound("jump", "./sounds/jump.wav")
+    this.registerSound("death", "./sounds/death.mp3")
+    this.registerSound("win", "./sounds/win.wav")
   }
 
   private registerSound(name: string, url: string) {
