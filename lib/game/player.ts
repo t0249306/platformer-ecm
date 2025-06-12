@@ -26,7 +26,7 @@ export class Player {
     this.gravity = 0.16
     this.friction = 0.8
     this.speed = 3.2
-    this.jumpStrength = 5.5
+    this.jumpStrength = 5.8
     this.canJump = false
   }
 

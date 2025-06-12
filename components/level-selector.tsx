@@ -5,16 +5,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { levelRegistry } from "@/lib/game/level-registry"
 import { StatisticsStorage } from "@/lib/statistics-storage"
-import { BarChart3, Trophy } from "lucide-react"
+import { BarChart3, Trophy, ArrowLeft } from "lucide-react"
 
 interface LevelSelectorProps {
+  worldId: string
   onLevelSelect: (levelId: string) => void
   onLevelStatistics: (levelId: string) => void
   onBack: () => void
 }
 
-export default function LevelSelector({ onLevelSelect, onLevelStatistics, onBack }: LevelSelectorProps) {
-  const levels = levelRegistry.getAll()
+export default function LevelSelector({ worldId, onLevelSelect, onLevelStatistics, onBack }: LevelSelectorProps) {
+  const world = levelRegistry.getWorld(worldId)
+  const levels = levelRegistry.getLevelsByWorld(worldId)
+
+  if (!world) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="p-8">
+          <div className="text-center">
+            <p className="text-muted-foreground">Мир не найден</p>
+            <Button onClick={onBack} className="mt-4">
+              ← Назад
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   const getDifficultyStars = (difficulty: 1 | 2 | 3) => {
     return "⭐".repeat(difficulty) + "☆".repeat(3 - difficulty)
@@ -45,7 +62,18 @@ export default function LevelSelector({ onLevelSelect, onLevelStatistics, onBack
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="text-center">Выбор уровня</CardTitle>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={onBack} className="p-2">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="text-3xl p-2 rounded-lg" style={{ backgroundColor: `${world.color}20` }}>
+            {world.icon}
+          </div>
+          <div>
+            <CardTitle style={{ color: world.color }}>{world.name}</CardTitle>
+            <p className="text-sm text-muted-foreground">{world.description}</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="p-6">
         <div className="grid gap-4 mb-6">
@@ -91,7 +119,13 @@ export default function LevelSelector({ onLevelSelect, onLevelStatistics, onBack
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 ml-4">
-                      <Button onClick={() => onLevelSelect(level.id)}>Играть</Button>
+                      <Button
+                        onClick={() => onLevelSelect(level.id)}
+                        style={{ backgroundColor: world.color }}
+                        className="text-white hover:opacity-90"
+                      >
+                        Играть
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -108,11 +142,6 @@ export default function LevelSelector({ onLevelSelect, onLevelStatistics, onBack
               </Card>
             )
           })}
-        </div>
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={onBack}>
-            ← Назад
-          </Button>
         </div>
       </CardContent>
     </Card>

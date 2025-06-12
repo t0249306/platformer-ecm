@@ -10,18 +10,18 @@ import { levelRegistry } from "@/lib/game/level-registry"
 import { soundManager } from "@/lib/sound-manager"
 
 export interface ActiveGameStatistics {
-  levelId: string,
-  level: Level,
-  score: number,
-  coinsCollected: number,
-  totalCoins: number,
-  startTime: Date,
-  endTime?: Date,
+  levelId: string
+  level: Level
+  score: number
+  coinsCollected: number
+  totalCoins: number
+  startTime: Date
+  endTime?: Date
 }
 
 interface GameProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
-  onScoreUpdate: (score: number, coinsCollected: number) => void
+  onScoreUpdate: (level: Level, score: number, coinsCollected: number) => void
   onGameOver: (stats: ActiveGameStatistics) => void
   onGameWon: (stats: ActiveGameStatistics) => void
 }
@@ -109,6 +109,12 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
         player.canJump = false
       }
 
+      // Проверяем, стоит ли игрок на крыше финишного куба
+      level.checkPlayerOnRoof(player.x, player.y, player.width, player.height)
+
+      // Обновляем уровень (для анимации ломающейся крыши)
+      level.update()
+
       if (player.y > level.height) {
         gameActiveRef.current = false
         endGameTimeRef.current = new Date()
@@ -182,7 +188,7 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
       player.drawAt(ctx, playerScreenPos.x, playerScreenPos.y)
 
       if (coinCollected) {
-        onScoreUpdate(scoreRef.current, coinsCollectedRef.current)
+        onScoreUpdate(level, scoreRef.current, coinsCollectedRef.current)
       }
 
       if (gameActiveRef.current) {

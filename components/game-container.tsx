@@ -3,27 +3,39 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { type ActiveGameStatistics, useGame } from "@/hooks/use-game"
 import { useMobile } from "@/hooks/use-mobile"
 import { levelRegistry } from "@/lib/game/level-registry"
 import { SettingsStorage, type GameSettings } from "@/lib/settings-storage"
 import { StatisticsStorage } from "@/lib/statistics-storage"
 import { soundManager } from "@/lib/sound-manager"
-import { ArrowLeft, RotateCcw } from "lucide-react"
+import { ArrowLeft, RotateCcw, Trophy } from "lucide-react"
 import MobileControls from "@/components/mobile-controls"
 import GameMenu from "@/components/game-menu"
+import WorldSelector from "@/components/world-selector"
 import LevelSelector from "@/components/level-selector"
 import LevelStatisticsComponent from "@/components/level-statistics"
 import ComingSoon from "@/components/coming-soon"
 import Settings from "@/components/settings"
 import FullscreenNotification from "@/components/fullscreen-notification"
+import { Level } from "@/lib/game/level"
 
-type GameState = "welcome" | "settings" | "menu" | "level-select" | "level-statistics" | "coming-soon" | "playing"
+type GameState =
+  | "welcome"
+  | "settings"
+  | "menu"
+  | "world-select"
+  | "level-select"
+  | "level-statistics"
+  | "coming-soon"
+  | "playing"
 
 export default function GameContainer() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gameState, setGameState] = useState<GameState>("welcome")
   const [previousState, setPreviousState] = useState<GameState>("welcome")
+  const [currentWorldId, setCurrentWorldId] = useState<string>("")
   const [currentLevelId, setCurrentLevelId] = useState<string>("")
   const [selectedLevelForStats, setSelectedLevelForStats] = useState<string>("")
   const [gameOver, setGameOver] = useState(false)
@@ -33,6 +45,7 @@ export default function GameContainer() {
   const [coinsCollected, setCoinsCollected] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [finalTime, setFinalTime] = useState(0)
+  const [qualifiedForGlobalLeaderboard, setQualifiedForGlobalLeaderboard] = useState(false)
 
   const gameStartDateRef = useRef<Date | null>(null)
   const gameEndDateRef = useRef<Date | null>(null)
@@ -49,9 +62,13 @@ export default function GameContainer() {
   const { initGame, resetGame, handleMobileControl, resetKeys } = useRef(
     useGame({
       canvasRef,
-      onScoreUpdate: (newScore: number, newCoinsCollected: number) => {
+      onScoreUpdate: (level: Level, newScore: number, newCoinsCollected: number) => {
         setScore(newScore)
         setCoinsCollected(newCoinsCollected)
+
+        if (level) {
+          setQualifiedForGlobalLeaderboard(level.canReachGlobalLeaderboard(newCoinsCollected))
+        }
       },
       onGameOver: (stats: ActiveGameStatistics) => {
         if (isMobile) {
@@ -84,6 +101,7 @@ export default function GameContainer() {
   ).current
 
   const getCurrentLevel = () => levelRegistry.get(currentLevelId)
+  const getCurrentWorld = () => levelRegistry.getWorld(currentWorldId)
 
   useEffect(() => {
     soundManager.setMuted(!settings.soundEnabled)
@@ -271,11 +289,16 @@ export default function GameContainer() {
   }
 
   const handleStartGame = () => {
-    navigateToState("menu")
+    navigateToState("world-select")
   }
 
   const handleSettings = () => {
     navigateToState("settings")
+  }
+
+  const handleWorldSelect = (worldId: string) => {
+    setCurrentWorldId(worldId)
+    navigateToState("level-select")
   }
 
   const handleLevelSelect = (levelId: string) => {
@@ -288,6 +311,7 @@ export default function GameContainer() {
     setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
+    setQualifiedForGlobalLeaderboard(false)
   }
 
   const handleLevelStatistics = (levelId: string) => {
@@ -307,6 +331,7 @@ export default function GameContainer() {
     setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
+    setQualifiedForGlobalLeaderboard(false)
 
     setTimeout(() => {
       startTimer()
@@ -326,6 +351,7 @@ export default function GameContainer() {
     setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
+    setQualifiedForGlobalLeaderboard(false)
   }
 
   const handleControlModeChange = () => {
@@ -358,8 +384,8 @@ export default function GameContainer() {
               <div className="flex flex-col items-center justify-center p-10 space-y-6">
                 <h2 className="text-2xl font-bold">Добро пожаловать в Платформер!</h2>
                 <p className="text-center text-muted-foreground">
-                  Используйте A/D для движения и пробел/W для прыжка. Соберите все монеты и доберитесь до финиша как
-                  можно быстрее!
+                  Исследуйте различные миры, собирайте монеты и преодолевайте препятствия. Выбирайте между простым и
+                  сложным путем - на сложном пути больше монет, но и больше опасностей!
                 </p>
                 <div className="flex flex-col gap-3 w-full max-w-xs">
                   <Button size="lg" onClick={handleStartGame} className="w-full">
@@ -401,10 +427,18 @@ export default function GameContainer() {
     return (
       <div className="w-full max-w-3xl mx-auto">
         <GameMenu
-          onLevelSelect={() => navigateToState("level-select")}
+          onLevelSelect={() => navigateToState("world-select")}
           onComingSoon={() => navigateToState("coming-soon")}
           onBack={() => setGameState("welcome")}
         />
+      </div>
+    )
+  }
+
+  if (gameState === "world-select") {
+    return (
+      <div className="w-full max-w-3xl mx-auto">
+        <WorldSelector onWorldSelect={handleWorldSelect} onBack={() => setGameState("welcome")} />
       </div>
     )
   }
@@ -413,9 +447,10 @@ export default function GameContainer() {
     return (
       <div className="w-full max-w-3xl mx-auto">
         <LevelSelector
+          worldId={currentWorldId}
           onLevelSelect={handleLevelSelect}
           onLevelStatistics={handleLevelStatistics}
-          onBack={() => setGameState("menu")}
+          onBack={() => setGameState("world-select")}
         />
       </div>
     )
@@ -432,12 +467,13 @@ export default function GameContainer() {
   if (gameState === "coming-soon") {
     return (
       <div className="w-full max-w-3xl mx-auto">
-        <ComingSoon onBack={() => setGameState("menu")} />
+        <ComingSoon onBack={() => setGameState("world-select")} />
       </div>
     )
   }
 
   const currentLevel = getCurrentLevel()
+  const currentWorld = getCurrentWorld()
 
   return (
     <div className="w-full max-w-3xl mx-auto select-none">
@@ -445,14 +481,26 @@ export default function GameContainer() {
         <CardContent className="p-6">
           {!gameOver && !gameWon && (
             <div className="flex justify-between items-center mb-4">
-              <div className="flex gap-6 items-center">
+              <div className="flex gap-6 items-center flex-wrap">
                 <div className="text-xl font-bold text-yellow-600">
                   Монеты: {coinsCollected}/{currentLevel?.coins.length || 0}
                 </div>
+                {qualifiedForGlobalLeaderboard && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Trophy className="h-3 w-3" />
+                    Глобальный топ
+                  </Badge>
+                )}
                 {currentLevel && !isMobile && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">Сложность:</span>
                     <span className="text-lg">{getDifficultyStars(currentLevel.difficulty)}</span>
+                  </div>
+                )}
+                {currentWorld && !isMobile && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Мир:</span>
+                    <span className="text-lg">{currentWorld.icon}</span>
                   </div>
                 )}
                 {gameState === "playing" && !gameOver && !gameWon && (
@@ -519,6 +567,12 @@ export default function GameContainer() {
                   Собрано монет: {coinsCollected}/{currentLevel?.coins.length || 0}
                 </div>
                 <div className="text-white mb-2 font-mono text-lg">Время прохождения: {formatTime(finalTime)}</div>
+                {qualifiedForGlobalLeaderboard && (
+                  <div className="flex items-center gap-2 text-yellow-400 mb-2">
+                    <Trophy className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Результат засчитан в глобальный топ!</span>
+                  </div>
+                )}
                 <div className="text-yellow-400 mb-4 text-sm">
                   {finalTime < 15000
                     ? "🏆 Невероятно быстро!"
@@ -541,11 +595,15 @@ export default function GameContainer() {
           </div>
 
           <div className="mt-4 text-sm text-muted-foreground">
-            <p>Управление:</p>
-            <ul className="list-disc list-inside">
-              <li>A/D - движение</li>
-              <li>Пробел или W - прыжок</li>
-            </ul>
+            <div className="flex justify-between items-start">
+              <div>
+                <p>Управление:</p>
+                <ul className="list-disc list-inside">
+                  <li>A/D - движение</li>
+                  <li>Пробел или W - прыжок</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
