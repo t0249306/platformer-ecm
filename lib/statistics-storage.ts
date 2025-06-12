@@ -1,5 +1,3 @@
-import { log } from "console"
-
 export interface LevelStatistics {
   levelId: string
   bestTime: number | null
@@ -83,8 +81,6 @@ export class StatisticsStorage {
     totalCoins: number,
     completed: boolean,
   ): void {
-    console.log(`Updating statistics for level ${levelId}: completed=${completed}, time=${completionTime}, coins=${coinsCollected}/${totalCoins}`);
-    
     const stats = this.load()
     const existing = stats.levels.get(levelId) || {
       levelId,

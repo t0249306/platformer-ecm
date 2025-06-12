@@ -96,12 +96,12 @@ export class Player {
   }
 
   checkHeadCollision(platforms: Platform[], obstacles: Obstacle[]): boolean {
-    const jumpHeight = this.jumpStrength * 8
+    const headCheckHeight = 3
     const headCheckArea = {
-      x: this.x + 5,
-      y: this.y - jumpHeight,
-      width: this.width - 10,
-      height: jumpHeight + 5,
+      x: this.x + this.width * 0.25,
+      y: this.y - headCheckHeight,
+      width: this.width * 0.5,
+      height: headCheckHeight,
     }
 
     for (const platform of platforms) {
