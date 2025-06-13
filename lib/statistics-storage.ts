@@ -80,7 +80,8 @@ export class StatisticsStorage {
     coinsCollected: number,
     totalCoins: number,
     completed: boolean,
-  ): void {
+  ): boolean {
+    let isNewRecord = false
     const stats = this.load()
     const existing = stats.levels.get(levelId) || {
       levelId,
@@ -107,6 +108,7 @@ export class StatisticsStorage {
         if (shouldUpdateBestTime) {
           existing.bestTime = completionTime
           existing.bestCoins = coinsCollected
+          isNewRecord = true
         }
       }
 
@@ -117,6 +119,7 @@ export class StatisticsStorage {
 
     stats.levels.set(levelId, existing)
     this.save(stats)
+    return isNewRecord
   }
 
   static getLevelStatistics(levelId: string): LevelStatistics | null {

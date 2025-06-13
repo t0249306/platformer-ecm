@@ -12,7 +12,6 @@ import { soundManager } from "@/lib/sound-manager"
 export interface ActiveGameStatistics {
   levelId: string
   level: Level
-  score: number
   coinsCollected: number
   totalCoins: number
   startTime: Date
@@ -21,19 +20,18 @@ export interface ActiveGameStatistics {
 
 interface GameProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
-  onScoreUpdate: (level: Level, score: number, coinsCollected: number) => void
+  onCoinCollect: (level: Level, coinsCollected: number) => void
   onGameOver: (stats: ActiveGameStatistics) => void
   onGameWon: (stats: ActiveGameStatistics) => void
 }
 
-export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: GameProps) {
+export function useGame({ canvasRef, onCoinCollect, onGameOver, onGameWon }: GameProps) {
   const playerRef = useRef<Player | null>(null)
   const levelRef = useRef<Level | null>(null)
   const cameraRef = useRef<Camera | null>(null)
   const animationFrameRef = useRef<number>(0)
   const keysRef = useRef<{ [key: string]: boolean }>({})
   const gameActiveRef = useRef<boolean>(false)
-  const scoreRef = useRef<number>(0)
   const coinsCollectedRef = useRef<number>(0)
   const totalCoinsRef = useRef<number>(0)
   const gameInitializedRef = useRef<boolean>(false)
@@ -122,7 +120,6 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
         onGameOver({
           levelId: level.id,
           level: level,
-          score: scoreRef.current,
           coinsCollected: coinsCollectedRef.current,
           totalCoins: totalCoinsRef.current,
           startTime: startGameTimeRef.current!,
@@ -139,7 +136,6 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
           onGameOver({
             levelId: level.id,
             level: level,
-            score: scoreRef.current,
             coinsCollected: coinsCollectedRef.current,
             totalCoins: totalCoinsRef.current,
             startTime: startGameTimeRef.current!,
@@ -154,7 +150,6 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
         if (player.checkCoinCollision(level.coins[i])) {
           coinCollected = true
           level.removeCoin(i)
-          scoreRef.current += 10
           coinsCollectedRef.current += 1
           soundManager.play("coin")
           break
@@ -162,16 +157,12 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
       }
 
       if (player.checkFinishCollision(level.finish)) {
-        if (level.coins.length === 0) {
-          scoreRef.current += 50
-        }
         gameActiveRef.current = false
         endGameTimeRef.current = new Date()
         soundManager.play("win")
         onGameWon({
           levelId: level.id,
           level: level,
-          score: scoreRef.current,
           coinsCollected: coinsCollectedRef.current,
           totalCoins: totalCoinsRef.current,
           startTime: startGameTimeRef.current!,
@@ -188,14 +179,14 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
       player.drawAt(ctx, playerScreenPos.x, playerScreenPos.y)
 
       if (coinCollected) {
-        onScoreUpdate(level, scoreRef.current, coinsCollectedRef.current)
+        onCoinCollect(level, coinsCollectedRef.current)
       }
 
       if (gameActiveRef.current) {
         animationFrameRef.current = requestAnimationFrame(update)
       }
     },
-    [onGameOver, onGameWon, onScoreUpdate],
+    [onGameOver, onGameWon, onCoinCollect],
   )
 
   const initGame = useCallback(
@@ -210,7 +201,6 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
       }
 
       if (!gameInitializedRef.current) {
-        scoreRef.current = 0
         coinsCollectedRef.current = 0
         gameInitializedRef.current = true
       }
@@ -262,7 +252,6 @@ export function useGame({ canvasRef, onScoreUpdate, onGameOver, onGameWon }: Gam
       gameActiveRef.current = false
       startGameTimeRef.current = new Date()
       endGameTimeRef.current = null
-      scoreRef.current = 0
       coinsCollectedRef.current = 0
       gameInitializedRef.current = false
 

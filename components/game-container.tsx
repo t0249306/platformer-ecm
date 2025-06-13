@@ -41,11 +41,11 @@ export default function GameContainer() {
   const [gameOver, setGameOver] = useState(false)
   const [gameWon, setGameWon] = useState(false)
 
-  const [score, setScore] = useState(0)
   const [coinsCollected, setCoinsCollected] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [finalTime, setFinalTime] = useState(0)
   const [qualifiedForGlobalLeaderboard, setQualifiedForGlobalLeaderboard] = useState(false)
+  const [isNewRecord, setIsNewRecord] = useState(false)
 
   const gameStartDateRef = useRef<Date | null>(null)
   const gameEndDateRef = useRef<Date | null>(null)
@@ -62,8 +62,7 @@ export default function GameContainer() {
   const { initGame, resetGame, handleMobileControl, resetKeys } = useRef(
     useGame({
       canvasRef,
-      onScoreUpdate: (level: Level, newScore: number, newCoinsCollected: number) => {
-        setScore(newScore)
+      onCoinCollect: (level: Level, newCoinsCollected: number) => {
         setCoinsCollected(newCoinsCollected)
 
         if (level) {
@@ -77,7 +76,7 @@ export default function GameContainer() {
         stopTimer()
         setGameOver(true)
 
-        StatisticsStorage.updateLevelStatistics(stats.levelId, null, stats.coinsCollected, stats.totalCoins, false)
+        setIsNewRecord(StatisticsStorage.updateLevelStatistics(stats.levelId, null, stats.coinsCollected, stats.totalCoins, false))
       },
       onGameWon: (stats: ActiveGameStatistics) => {
         if (isMobile) {
@@ -88,13 +87,13 @@ export default function GameContainer() {
 
         const currentLevel = stats.level
         if (currentLevel) {
-          StatisticsStorage.updateLevelStatistics(
+          setIsNewRecord(StatisticsStorage.updateLevelStatistics(
             stats.levelId,
             stats.endTime!.getTime() - stats.startTime.getTime(),
             stats.coinsCollected,
             stats.totalCoins,
             true,
-          )
+          ))
         }
       },
     }),
@@ -307,7 +306,6 @@ export default function GameContainer() {
     setGameState("playing")
     setGameOver(false)
     setGameWon(false)
-    setScore(0)
     setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
@@ -327,7 +325,6 @@ export default function GameContainer() {
     resetGame(currentLevelId)
     setGameOver(false)
     setGameWon(false)
-    setScore(0)
     setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
@@ -347,7 +344,6 @@ export default function GameContainer() {
     setGameState(previousState)
     setGameOver(false)
     setGameWon(false)
-    setScore(0)
     setCoinsCollected(0)
     setCurrentTime(0)
     setFinalTime(0)
@@ -485,12 +481,6 @@ export default function GameContainer() {
                 <div className="text-xl font-bold text-yellow-600">
                   Монеты: {coinsCollected}/{currentLevel?.coins.length || 0}
                 </div>
-                {qualifiedForGlobalLeaderboard && (
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <Trophy className="h-3 w-3" />
-                    Глобальный топ
-                  </Badge>
-                )}
                 {currentLevel && !isMobile && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">Сложность:</span>
@@ -543,16 +533,15 @@ export default function GameContainer() {
             {gameOver && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-md z-30">
                 <h2 className="text-3xl font-bold text-red-500 mb-4">Игра окончена!</h2>
-                <div className="text-white mb-2">Ваш счёт: {score}</div>
                 <div className="text-white mb-2">
                   Собрано монет: {coinsCollected}/{currentLevel?.coins.length || 0}
                 </div>
                 <div className="text-white mb-4 font-mono text-lg">Время: {formatTime(finalTime)}</div>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Button size="lg" onClick={handleRestartGame}>
+                  <Button size="lg" variant="outline" onClick={handleRestartGame}>
                     Попробовать снова
                   </Button>
-                  <Button size="lg" variant="outline" onClick={handleBackToPrevious}>
+                  <Button size="lg" onClick={handleBackToPrevious}>
                     Назад
                   </Button>
                 </div>
@@ -562,15 +551,14 @@ export default function GameContainer() {
             {gameWon && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-md z-30">
                 <h2 className="text-3xl font-bold text-green-500 mb-4">Победа!</h2>
-                <div className="text-white mb-2">Ваш счёт: {score}</div>
                 <div className="text-white mb-2">
                   Собрано монет: {coinsCollected}/{currentLevel?.coins.length || 0}
                 </div>
                 <div className="text-white mb-2 font-mono text-lg">Время прохождения: {formatTime(finalTime)}</div>
-                {qualifiedForGlobalLeaderboard && (
+                {isNewRecord && (
                   <div className="flex items-center gap-2 text-yellow-400 mb-2">
                     <Trophy className="h-4 w-4" />
-                    <span className="text-sm font-semibold">Результат засчитан в глобальный топ!</span>
+                    <span className="text-sm font-semibold">Это ваш новый рекорд!</span>
                   </div>
                 )}
                 <div className="text-yellow-400 mb-4 text-sm">
