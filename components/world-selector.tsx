@@ -28,12 +28,12 @@ export default function WorldSelector({ onWorldSelect, onBack }: WorldSelectorPr
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle className="text-center">Выбор мира</CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
-        <div className="grid gap-4 mb-6">
+      <CardContent className="p-4 sm:p-6">
+        <div className="grid gap-3 sm:gap-4 mb-6">
           {worlds.map((world) => {
             const progress = getWorldProgress(world.id)
             const isUnlocked =
@@ -48,30 +48,30 @@ export default function WorldSelector({ onWorldSelect, onBack }: WorldSelectorPr
                 key={world.id}
                 className={`transition-all hover:shadow-md ${!isUnlocked ? "opacity-60" : "cursor-pointer"}`}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="text-4xl p-3 rounded-lg" style={{ backgroundColor: `${world.color}20` }}>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                      <div
+                        className="text-3xl sm:text-4xl p-2 sm:p-3 rounded-lg flex-shrink-0"
+                        style={{ backgroundColor: `${world.color}20` }}
+                      >
                         {world.icon}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-lg" style={{ color: world.color }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="font-semibold text-base sm:text-lg truncate" style={{ color: world.color }}>
                             {world.name}
                           </h3>
                           {progress.completed === progress.total && progress.total > 0 && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
+                            <Badge variant="secondary" className="flex items-center gap-1 text-xs">
                               ✅ Завершен
                             </Badge>
                           )}
-                          {!isUnlocked && (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              🔒 Заблокирован
-                            </Badge>
-                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">{world.description}</p>
-                        <div className="flex items-center gap-4 text-sm">
+                        <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-2">
+                          {world.description}
+                        </p>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm">
                           <span>Уровней: {progress.total}</span>
                           <span className="text-green-600">
                             Пройдено: {progress.completed}/{progress.total} ({progress.percentage}%)
@@ -86,17 +86,18 @@ export default function WorldSelector({ onWorldSelect, onBack }: WorldSelectorPr
                         )}
                       </div>
                     </div>
-                    <div className="ml-4">
+                    <div className="flex-shrink-0">
                       <Button
                         onClick={() => onWorldSelect(world.id)}
                         disabled={!isUnlocked}
+                        size="sm"
                         style={{
                           backgroundColor: isUnlocked ? world.color : undefined,
                           borderColor: world.color,
                         }}
-                        className={isUnlocked ? "text-white hover:opacity-90" : ""}
+                        className={`${isUnlocked ? "text-white hover:opacity-90" : ""} text-xs sm:text-sm px-3 sm:px-4`}
                       >
-                        {isUnlocked ? "Войти" : "Заблокирован"}
+                        {isUnlocked ? "Войти" : "🔒 Заблокирован"}
                       </Button>
                     </div>
                   </div>

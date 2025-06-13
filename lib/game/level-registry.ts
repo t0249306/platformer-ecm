@@ -140,7 +140,7 @@ levelRegistry.register({
   playerStart: { x: 50, y: 350 },
   platforms: [
     { x: 0, y: 460, width: 2400, height: 40 },
-    // Простой путь (нижний)
+    // Простой путь (нижний) - прямой и безопасный
     { x: 150, y: 400, width: 100, height: 20 },
     { x: 300, y: 400, width: 100, height: 20 },
     { x: 450, y: 400, width: 100, height: 20 },
@@ -157,34 +157,35 @@ levelRegistry.register({
     { x: 2100, y: 400, width: 100, height: 20 },
     { x: 2250, y: 400, width: 150, height: 20 },
 
-    // Сложный путь (верхний)
-    { x: 200, y: 300, width: 80, height: 20 },
-    { x: 320, y: 250, width: 80, height: 20 },
-    { x: 440, y: 200, width: 80, height: 20 },
-    { x: 560, y: 150, width: 80, height: 20 },
-    { x: 680, y: 200, width: 80, height: 20 },
-    { x: 800, y: 250, width: 80, height: 20 },
-    { x: 920, y: 200, width: 80, height: 20 },
-    { x: 1040, y: 150, width: 80, height: 20 },
-    { x: 1160, y: 200, width: 80, height: 20 },
-    { x: 1280, y: 250, width: 80, height: 20 },
-    { x: 1400, y: 200, width: 80, height: 20 },
-    { x: 1520, y: 150, width: 80, height: 20 },
-    { x: 1640, y: 200, width: 80, height: 20 },
-    { x: 1760, y: 250, width: 80, height: 20 },
-    { x: 1880, y: 200, width: 80, height: 20 },
-    { x: 2000, y: 150, width: 80, height: 20 },
-    { x: 2120, y: 200, width: 80, height: 20 },
+    // Сложный путь (верхний) - требует точных прыжков, узкие платформы
+    { x: 200, y: 280, width: 60, height: 15 },
+    { x: 300, y: 220, width: 50, height: 15 },
+    { x: 400, y: 160, width: 40, height: 15 },
+    { x: 500, y: 120, width: 40, height: 15 },
+    { x: 600, y: 80, width: 40, height: 15 },
+    { x: 720, y: 120, width: 40, height: 15 },
+    { x: 840, y: 160, width: 40, height: 15 },
+    { x: 960, y: 120, width: 40, height: 15 },
+    { x: 1080, y: 80, width: 40, height: 15 },
+    { x: 1200, y: 120, width: 40, height: 15 },
+    { x: 1320, y: 160, width: 40, height: 15 },
+    { x: 1440, y: 120, width: 40, height: 15 },
+    { x: 1560, y: 80, width: 40, height: 15 },
+    { x: 1680, y: 120, width: 40, height: 15 },
+    { x: 1800, y: 160, width: 40, height: 15 },
+    { x: 1920, y: 120, width: 40, height: 15 },
+    { x: 2040, y: 80, width: 40, height: 15 },
+    { x: 2160, y: 120, width: 50, height: 15 },
 
-    // Соединение путей
+    // Соединение путей - доступ к финишу с обоих путей
     { x: 2200, y: 300, width: 100, height: 20 },
+    { x: 2200, y: 200, width: 100, height: 20 },
 
-    // Финишная постройка
-    { x: 2300, y: 260, width: 200, height: 40 }, // Основание постройки
-    { x: 2350, y: 220, width: 100, height: 40 }, // Средняя часть
+    // Финишная постройка - доступна с обоих путей
+    { x: 2300, y: 260, width: 100, height: 140 }, // Высокое основание
   ],
   coins: [
-    // Простой путь (меньше монет)
+    // Простой путь (13 монет) - меньше монет, но безопасно
     { x: 200, y: 370, radius: 20 },
     { x: 350, y: 370, radius: 20 },
     { x: 500, y: 370, radius: 20 },
@@ -199,58 +200,61 @@ levelRegistry.register({
     { x: 1850, y: 370, radius: 20 },
     { x: 2000, y: 370, radius: 20 }, // 13 монет
 
-    // Сложный путь (больше монет)
-    { x: 240, y: 270, radius: 20 },
-    { x: 360, y: 220, radius: 20 },
-    { x: 480, y: 170, radius: 20 },
-    { x: 600, y: 120, radius: 20 },
-    { x: 720, y: 170, radius: 20 },
-    { x: 840, y: 220, radius: 20 },
-    { x: 960, y: 170, radius: 20 },
-    { x: 1080, y: 120, radius: 20 },
-    { x: 1200, y: 170, radius: 20 },
-    { x: 1320, y: 220, radius: 20 },
-    { x: 1440, y: 170, radius: 20 },
-    { x: 1560, y: 120, radius: 20 },
-    { x: 1680, y: 170, radius: 20 },
-    { x: 1800, y: 220, radius: 20 },
-    { x: 1920, y: 170, radius: 20 },
-    { x: 2040, y: 120, radius: 20 },
-    { x: 2160, y: 170, radius: 20 }, // 17 монет
+    // Сложный путь (18 монет) - больше монет, но опасно
+    { x: 230, y: 250, radius: 20 },
+    { x: 325, y: 190, radius: 20 },
+    { x: 420, y: 130, radius: 20 },
+    { x: 520, y: 90, radius: 20 },
+    { x: 620, y: 50, radius: 20 },
+    { x: 740, y: 90, radius: 20 },
+    { x: 860, y: 130, radius: 20 },
+    { x: 980, y: 90, radius: 20 },
+    { x: 1100, y: 50, radius: 20 },
+    { x: 1220, y: 90, radius: 20 },
+    { x: 1340, y: 130, radius: 20 },
+    { x: 1460, y: 90, radius: 20 },
+    { x: 1580, y: 50, radius: 20 },
+    { x: 1700, y: 90, radius: 20 },
+    { x: 1820, y: 130, radius: 20 },
+    { x: 1940, y: 90, radius: 20 },
+    { x: 2060, y: 50, radius: 20 },
+    { x: 2185, y: 90, radius: 20 }, // 18 монет
   ],
   obstacles: [
-    // Простой путь
+    // Простой путь - мало препятствий
     { x: 250, y: 400, width: 50, height: 20 },
     { x: 700, y: 400, width: 50, height: 20 },
     { x: 1150, y: 400, width: 50, height: 20 },
     { x: 1600, y: 400, width: 50, height: 20 },
+    { x: 2050, y: 400, width: 50, height: 20 },
 
-    // Сложный путь
-    { x: 280, y: 300, width: 40, height: 20 },
-    { x: 400, y: 250, width: 40, height: 20 },
-    { x: 520, y: 200, width: 40, height: 20 },
-    { x: 640, y: 150, width: 40, height: 20 },
-    { x: 760, y: 200, width: 40, height: 20 },
-    { x: 880, y: 250, width: 40, height: 20 },
-    { x: 1000, y: 200, width: 40, height: 20 },
-    { x: 1120, y: 150, width: 40, height: 20 },
-    { x: 1240, y: 200, width: 40, height: 20 },
-    { x: 1360, y: 250, width: 40, height: 20 },
-    { x: 1480, y: 200, width: 40, height: 20 },
-    { x: 1600, y: 150, width: 40, height: 20 },
-    { x: 1720, y: 200, width: 40, height: 20 },
-    { x: 1840, y: 250, width: 40, height: 20 },
-    { x: 1960, y: 200, width: 40, height: 20 },
-    { x: 2080, y: 150, width: 40, height: 20 },
+    // Сложный путь - много препятствий на узких платформах
+    { x: 240, y: 280, width: 20, height: 15 },
+    { x: 330, y: 220, width: 20, height: 15 },
+    { x: 425, y: 160, width: 15, height: 15 },
+    { x: 525, y: 120, width: 15, height: 15 },
+    { x: 625, y: 80, width: 15, height: 15 },
+    { x: 745, y: 120, width: 15, height: 15 },
+    { x: 865, y: 160, width: 15, height: 15 },
+    { x: 985, y: 120, width: 15, height: 15 },
+    { x: 1105, y: 80, width: 15, height: 15 },
+    { x: 1225, y: 120, width: 15, height: 15 },
+    { x: 1345, y: 160, width: 15, height: 15 },
+    { x: 1465, y: 120, width: 15, height: 15 },
+    { x: 1585, y: 80, width: 15, height: 15 },
+    { x: 1705, y: 120, width: 15, height: 15 },
+    { x: 1825, y: 160, width: 15, height: 15 },
+    { x: 1945, y: 120, width: 15, height: 15 },
+    { x: 2065, y: 80, width: 15, height: 15 },
   ],
-  finish: { x: 2375, y: 170, width: 50, height: 50 },
-  breakableRoof: { x: 2300, y: 210, width: 200, height: 10 }, // Ломающаяся крыша
+  finish: { x: 2325, y: 210, width: 50, height: 50 },
+  breakableRoof: { x: 2300, y: 200, width: 100, height: 60 }, // Ломающаяся крыша-куб
   backgroundColor: "#2d1b69",
 })
 
 levelRegistry.register({
   id: "level3",
-  name: "Экстремальный вызов",
+  name: "Экстремал",
   difficulty: 3,
   width: 3200,
   height: 600,
@@ -318,7 +322,7 @@ levelRegistry.register({
     { x: 3100, y: 180, width: 100, height: 60 }, // Средняя часть
   ],
   coins: [
-    // Простой путь (13 монет)
+    // Просто�� путь (13 монет)
     { x: 150, y: 470, radius: 15 },
     { x: 300, y: 470, radius: 15 },
     { x: 450, y: 470, radius: 15 },

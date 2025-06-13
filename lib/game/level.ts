@@ -58,6 +58,10 @@ export class Level {
           data.breakableRoof.y,
           data.breakableRoof.width,
           data.breakableRoof.height,
+          data.finish.x,
+          data.finish.y,
+          data.finish.width,
+          data.finish.height,
         )
       : null
   }
